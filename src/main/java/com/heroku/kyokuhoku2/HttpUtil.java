@@ -37,12 +37,17 @@ public class HttpUtil {
         };
     }
 
-    public static Processor getHtmlProcessor(final Expression urlExp) {
+    public static Processor getHtmlProcessor(final String url) {
         return new Processor() {
 
             @Override
             public void process(Exchange exchange) throws Exception {
-                exchange.getIn().setBody(HttpUtil.getDocument(urlExp.evaluate(exchange, String.class)).outerHtml());
+                Document document = HttpUtil.getDocument(url);
+                if (document == null) {
+                    exchange.getIn().setBody(null);
+                } else {
+                    exchange.getIn().setBody(document.outerHtml());
+                }
             }
         };
     }
