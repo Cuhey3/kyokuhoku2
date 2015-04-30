@@ -21,7 +21,7 @@ public abstract class Source extends RouteBuilder {
         return upToDate;
     }
 
-    public Predicate isNotUpToDatePredicate() {
+    public Predicate isNotUpToDateSourcePredicate() {
         return new Predicate() {
 
             @Override
@@ -39,7 +39,7 @@ public abstract class Source extends RouteBuilder {
         this.upToDate = false;
     }
 
-    protected Processor changeSourcesNotUpToDate() {
+    protected Processor turnOtherSourceToNotUpToDate() {
         return new Processor() {
 
             @Override

@@ -33,19 +33,21 @@ public abstract class SiteSource extends Source {
                 .choice().when(constant(singlePage)).process(HttpUtil.getHtmlProcessor(sourceUrl))
                 .otherwise().process(HttpUtil.getPagesProcessor(sourceUrl, continueQuery, continueKey, continueValue))
                 .end()
-                .choice().when(isSiteChanging()).toF("seda:site.%s.changing", sourceKind)
-                .otherwise().toF("log:site.%s.log.not_changing?showBody=false", sourceKind)
-                .end()
-                .filter(isNotUpToDatePredicate())
+                .choice().when(validateUpcomingSiteSource(false))
+                .toF("seda:site.%s.get.retry", sourceKind)
+                .otherwise()
+                .filter(isSiteChanging())
+                .toF("seda:site.%s.changing", sourceKind);
+
+        fromF("seda:site.%s.get.retry", sourceKind)
                 .process(setDelay())
                 .delay(simple("${header.myDelay}"))
-                .toF("log:site.%s.get.retry", sourceKind)
-                .filter(isNotUpToDatePredicate())
+                .filter(isNotUpToDateSourcePredicate())
                 .toF("seda:site.%s.get", sourceKind);
 
         fromF("seda:site.%s.changing", sourceKind)
                 .toF("log:site.%s.log.changing?showBody=false", sourceKind)
-                .process(changeSourcesNotUpToDate())
+                .process(turnOtherSourceToNotUpToDate())
                 .setBody(constant(onChangeActionClasses()))
                 .to(ActionBroker.ENTRY_ENDPOINT);
     }
@@ -57,35 +59,21 @@ public abstract class SiteSource extends Source {
             public boolean matches(Exchange exchange) {
                 boolean siteChanging = false;
                 Object body = exchange.getIn().getBody();
-                if (body == null) {
-                    notUpToDate();
-                } else if (body instanceof String) {
+                if (body instanceof String) {
                     String newHtml = (String) body;
-                    if (newHtml.isEmpty()) {
-                        notUpToDate();
-                    } else {
-                        Integer newHash = newHtml.hashCode();
-                        if (!Objects.equals(newHash, hash())) {
-                            siteChanging = hash() != null;
-                            html(newHtml);
-                            hash(newHash);
-                            upToDate();
-                        }
+                    Integer newHash = newHtml.hashCode();
+                    if (!Objects.equals(newHash, hash())) {
+                        siteChanging = hash() != null;
+                        html(newHtml);
+                        hash(newHash);
                     }
                 } else if (body instanceof String[]) {
                     String[] newHtmlArray = (String[]) body;
-                    for (String newHtml : newHtmlArray) {
-                        if (newHtml == null) {
-                            notUpToDate();
-                            return false;
-                        }
-                    }
                     Integer newHash = Arrays.hashCode(newHtmlArray);
                     if (newHash != 1 && !Objects.equals(newHash, hash())) {
                         siteChanging = hash() != null;
                         htmlArray(newHtmlArray);
                         hash(newHash);
-                        upToDate();
                     }
                 }
                 return siteChanging;
@@ -140,6 +128,39 @@ public abstract class SiteSource extends Source {
                 }
                 delay *= 2;
                 exchange.getIn().setHeader("myDelay", delay);
+            }
+        };
+    }
+
+    public Predicate validateUpcomingSiteSource(final boolean flag) {
+        return new Predicate() {
+
+            @Override
+            public boolean matches(Exchange exchange) {
+                Object body = exchange.getIn().getBody();
+                boolean validate = true;
+                if (body == null) {
+                    validate = false;
+                } else if (body instanceof String) {
+                    String newHtml = (String) body;
+                    if (newHtml.isEmpty()) {
+                        validate = false;
+                    }
+                } else if (body instanceof String[]) {
+                    String[] newHtmlArray = (String[]) body;
+                    for (String newHtml : newHtmlArray) {
+                        if (newHtml == null) {
+                            validate = false;
+                            break;
+                        }
+                    }
+                }
+                if (validate) {
+                    upToDate();
+                } else {
+                    notUpToDate();
+                }
+                return validate == flag;
             }
         };
     }
