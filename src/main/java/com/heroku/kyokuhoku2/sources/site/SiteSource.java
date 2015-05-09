@@ -5,163 +5,129 @@ import com.heroku.kyokuhoku2.actions.ActionBroker;
 import com.heroku.kyokuhoku2.sources.Source;
 import java.util.Arrays;
 import java.util.Objects;
-import org.apache.camel.Exchange;
-import org.apache.camel.Predicate;
-import org.apache.camel.Processor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import org.apache.camel.Body;
+import org.apache.camel.Header;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import static java.lang.String.format;
 
+@Data
+@EqualsAndHashCode(callSuper = false)
 public abstract class SiteSource extends Source {
 
-    protected String html = "";
-    protected String[] htmlArray = new String[]{};
-    protected Integer hash = null;
-    protected String sourceKind = "yahoo.top";
-    protected String periodExpression = "1m";
-    protected String sourceUrl = "http://www.yahoo.co.jp/";
-    protected String continueQuery = "";
-    protected String continueKey = "";
-    protected String continueValue = "";
-    protected boolean singlePage = true;
+    private String html = "";
+    private String[] htmlArray = new String[]{};
+    private Integer hash = null;
+    private String sourceKind, sourceUrl, continueQuery, continueKey, continueValue;
+    private String periodExpression = "1m";
+    private boolean singlePage = true;
+    private String getEndpoint, retryEndpoint, changingEndpoint, timerEndpoint;
 
     @Override
     public void configure() throws Exception {
-        fromF("timer:site.%s.timer?period=%s", sourceKind, periodExpression)
-                .toF("seda:site.%s.get", sourceKind);
+        from(timerEndpoint)
+                .to(getEndpoint);
 
-        fromF("seda:site.%s.get", sourceKind)
-                .choice().when(constant(singlePage)).process(HttpUtil.getHtmlProcessor(sourceUrl))
-                .otherwise().process(HttpUtil.getPagesProcessor(sourceUrl, continueQuery, continueKey, continueValue))
-                .end()
-                .choice().when(validateUpcomingSiteSource(false))
-                .toF("seda:site.%s.get.retry", sourceKind)
+        from(getEndpoint)
+                .choice().when().method(this, "isSinglePage")
+                .bean(HttpUtil.class, format("getHtml(%s)", sourceUrl))
                 .otherwise()
-                .filter(isSiteChanging())
-                .toF("seda:site.%s.changing", sourceKind);
+                .bean(HttpUtil.class, format("getPages(%s,%s,%s,%s)", sourceUrl, continueQuery, continueKey, continueValue))
+                .end()
+                .choice().when().method(this, "validateUpcomingSiteSource(${body},false)")
+                .to(retryEndpoint)
+                .otherwise()
+                .filter().method(this, "isSiteChanging")
+                .to(changingEndpoint);
 
-        fromF("seda:site.%s.get.retry", sourceKind)
-                .process(setDelay())
+        from(retryEndpoint)
+                .bean(this, "setDelay")
                 .delay(simple("${header.myDelay}"))
-                .filter(isNotUpToDateSourcePredicate())
-                .toF("seda:site.%s.get", sourceKind);
+                .filter().method(this, "isNotUpToDate")
+                .to(getEndpoint);
 
-        fromF("seda:site.%s.changing", sourceKind)
+        from(changingEndpoint)
                 .toF("log:site.%s.log.changing?showBody=false", sourceKind)
-                .process(turnOtherSourceToNotUpToDate())
-                .setBody(constant(onChangeActionClasses()))
+                .bean(this, "turnOtherSourceToNotUpToDate")
+                .bean(this, "getOnChangeActionClasses")
                 .to(ActionBroker.ENTRY_ENDPOINT);
     }
 
-    protected Predicate isSiteChanging() {
-        return new Predicate() {
-
-            @Override
-            public boolean matches(Exchange exchange) {
-                boolean siteChanging = false;
-                Object body = exchange.getIn().getBody();
-                if (body instanceof String) {
-                    String newHtml = (String) body;
-                    Integer newHash = newHtml.hashCode();
-                    if (!Objects.equals(newHash, hash())) {
-                        siteChanging = hash() != null;
-                        html(newHtml);
-                        hash(newHash);
-                    }
-                } else if (body instanceof String[]) {
-                    String[] newHtmlArray = (String[]) body;
-                    Integer newHash = Arrays.hashCode(newHtmlArray);
-                    if (newHash != 1 && !Objects.equals(newHash, hash())) {
-                        siteChanging = hash() != null;
-                        htmlArray(newHtmlArray);
-                        hash(newHash);
-                    }
-                }
-                return siteChanging;
+    public boolean isSiteChanging(@Body Object body) {
+        boolean siteChanging = false;
+        if (body instanceof String) {
+            String newHtml = (String) body;
+            Integer newHash = newHtml.hashCode();
+            if (!Objects.equals(newHash, getHash())) {
+                siteChanging = getHash() != null;
+                setHtml(newHtml);
+                setHash(newHash);
             }
-        };
+        } else if (body instanceof String[]) {
+            String[] newHtmlArray = (String[]) body;
+            Integer newHash = Arrays.hashCode(newHtmlArray);
+            if (newHash != 1 && !Objects.equals(newHash, getHash())) {
+                siteChanging = getHash() != null;
+                setHtmlArray(newHtmlArray);
+                setHash(newHash);
+            }
+        }
+        return siteChanging;
     }
 
-    protected void html(String html) {
-        this.html = html;
-    }
-
-    public String html() {
-        return html;
-    }
-
-    protected void htmlArray(String[] htmlArray) {
-        this.htmlArray = htmlArray;
-    }
-
-    public String[] htmlArray() {
-        return htmlArray;
-    }
-
-    protected void hash(int hash) {
-        this.hash = hash;
-    }
-
-    protected Integer hash() {
-        return hash;
-    }
-
-    public Document document() {
+    public Document getDocument() {
         return Jsoup.parse(this.html);
     }
 
-    public Document[] documentArray() {
-        Document[] documentArray = new Document[htmlArray.length];
-        for (int i = 0; i < htmlArray.length; i++) {
+    public Document[] getDocumentArray() {
+        int len = htmlArray.length;
+        Document[] documentArray = new Document[len];
+        for (int i = 0; i < len; i++) {
             documentArray[i] = Jsoup.parse(htmlArray[i]);
         }
         return documentArray;
     }
 
-    public Processor setDelay() {
-        return new Processor() {
-
-            @Override
-            public void process(Exchange exchange) throws Exception {
-                Long delay = exchange.getIn().getHeader("myDelay", Long.class);
-                if (delay == null) {
-                    delay = 1000L;
-                }
-                delay *= 2;
-                exchange.getIn().setHeader("myDelay", delay);
-            }
-        };
+    public void setDelay(@Header(value = "myDelay") Long delay) {
+        if (delay == null) {
+            delay = 1000L;
+        }
+        delay *= 2;
     }
 
-    public Predicate validateUpcomingSiteSource(final boolean flag) {
-        return new Predicate() {
-
-            @Override
-            public boolean matches(Exchange exchange) {
-                Object body = exchange.getIn().getBody();
-                boolean validate = true;
-                if (body == null) {
-                    validate = false;
-                } else if (body instanceof String) {
-                    String newHtml = (String) body;
-                    if (newHtml.isEmpty()) {
-                        validate = false;
-                    }
-                } else if (body instanceof String[]) {
-                    String[] newHtmlArray = (String[]) body;
-                    for (String newHtml : newHtmlArray) {
-                        if (newHtml == null) {
-                            validate = false;
-                            break;
-                        }
-                    }
-                }
-                if (validate) {
-                    upToDate();
-                } else {
-                    notUpToDate();
-                }
-                return validate == flag;
+    public boolean validateUpcomingSiteSource(@Body Object body, final boolean flag) {
+        boolean validate = true;
+        if (body == null) {
+            validate = false;
+        } else if (body instanceof String) {
+            String newHtml = (String) body;
+            if (newHtml.isEmpty()) {
+                validate = false;
             }
-        };
+        } else if (body instanceof String[]) {
+            String[] newHtmlArray = (String[]) body;
+            for (String newHtml : newHtmlArray) {
+                if (newHtml == null) {
+                    validate = false;
+                    break;
+                }
+            }
+        }
+        if (validate) {
+            setUpToDate(true);
+        } else {
+            setUpToDate(false);
+        }
+        return validate == flag;
+    }
+
+    @Override
+    public void buildEndpoint() {
+        getEndpoint = format("seda:site.%s.get", sourceKind);
+        retryEndpoint = format("seda:site.%s.retry", sourceKind);
+        changingEndpoint = format("seda:site.%s.changing", sourceKind);
+        timerEndpoint = format("timer:site.%s.timer?period=%s", sourceKind, periodExpression);
     }
 }

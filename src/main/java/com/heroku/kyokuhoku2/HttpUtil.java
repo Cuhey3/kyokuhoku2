@@ -37,19 +37,13 @@ public class HttpUtil {
         };
     }
 
-    public static Processor getHtmlProcessor(final String url) {
-        return new Processor() {
-
-            @Override
-            public void process(Exchange exchange) throws Exception {
-                Document document = HttpUtil.getDocument(url);
-                if (document == null) {
-                    exchange.getIn().setBody(null);
-                } else {
-                    exchange.getIn().setBody(document.outerHtml());
-                }
-            }
-        };
+    public String getHtml(final String url) {
+        Document document = HttpUtil.getDocument(url);
+        if (document == null) {
+            return null;
+        } else {
+            return document.outerHtml();
+        }
     }
 
     public static String getJson(String url) {
@@ -86,16 +80,6 @@ public class HttpUtil {
             @Override
             public void process(Exchange exchange) throws Exception {
                 exchange.getIn().setBody(HttpUtil.getDocument(urlExp.evaluate(exchange, String.class)));
-            }
-        };
-    }
-
-    public static Processor getPagesProcessor(final String url, final String query, final String param, final String attr) {
-        return new Processor() {
-
-            @Override
-            public void process(Exchange exchange) throws Exception {
-                exchange.getIn().setBody(HttpUtil.getPages(url, query, param, attr));
             }
         };
     }
