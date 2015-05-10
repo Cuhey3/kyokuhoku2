@@ -1,19 +1,12 @@
 package com.heroku.kyokuhoku2;
 
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.camel.Exchange;
-import org.apache.camel.Expression;
 import org.apache.camel.Processor;
-import org.jsoup.Connection;
-import org.jsoup.Connection.Response;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.select.Elements;
 
 public class Utility {
 

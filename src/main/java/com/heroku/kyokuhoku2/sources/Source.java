@@ -16,6 +16,7 @@ public abstract class Source extends RouteBuilder {
     protected boolean upToDate = false;
     protected Set<Class> onChangeToUpdateSourceClasses = new HashSet<>();
     protected Set<Class> onChangeActionClasses = new HashSet<>();
+    protected String sourceKind;
 
     public boolean isUpToDate() {
         return upToDate;

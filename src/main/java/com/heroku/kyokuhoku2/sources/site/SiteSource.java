@@ -8,6 +8,7 @@ import java.util.Objects;
 import org.apache.camel.Exchange;
 import org.apache.camel.Predicate;
 import org.apache.camel.Processor;
+import org.apache.camel.model.language.ExpressionDefinition;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
@@ -16,7 +17,6 @@ public abstract class SiteSource extends Source {
     protected String html = "";
     protected String[] htmlArray = new String[]{};
     protected Integer hash = null;
-    protected String sourceKind = "yahoo.top";
     protected String periodExpression = "1m";
     protected String sourceUrl = "http://www.yahoo.co.jp/";
     protected String continueQuery = "";
