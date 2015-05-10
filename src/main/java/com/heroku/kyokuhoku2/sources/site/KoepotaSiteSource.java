@@ -6,8 +6,9 @@ import org.springframework.stereotype.Component;
 public class KoepotaSiteSource extends SiteSource {
 
     private KoepotaSiteSource() {
-        sourceKind = "koepota";
-        sourceUrl = "http://www.koepota.jp/eventschedule/";
-        periodExpression = "30m";
+        setSourceKind("koepota");
+        setSourceUrl("http://www.koepota.jp/eventschedule/");
+        setPeriodExpression("30m");
+        buildEndpoint();
     }
 }

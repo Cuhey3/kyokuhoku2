@@ -2,9 +2,8 @@ package com.heroku.kyokuhoku2.sources;
 
 import java.util.HashSet;
 import java.util.Set;
-import org.apache.camel.Exchange;
-import org.apache.camel.Predicate;
-import org.apache.camel.Processor;
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.camel.builder.RouteBuilder;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,45 +11,25 @@ import org.springframework.beans.factory.annotation.Autowired;
 public abstract class Source extends RouteBuilder {
 
     @Autowired
+    @Getter
     BeanFactory factory;
-    protected boolean upToDate = false;
-    protected Set<Class> onChangeToUpdateSourceClasses = new HashSet<>();
-    protected Set<Class> onChangeActionClasses = new HashSet<>();
-    protected String sourceKind;
+    @Getter
+    @Setter
+    private boolean upToDate = false;
+    @Getter
+    private final Set<Class> onChangeToUpdateSourceClasses = new HashSet<>();
+    @Getter
+    private final Set<Class> onChangeActionClasses = new HashSet<>();
 
-    public boolean isUpToDate() {
-        return upToDate;
+    public boolean isNotUpToDate() {
+        return !isUpToDate();
     }
 
-    public Predicate isNotUpToDateSourcePredicate() {
-        return new Predicate() {
-
-            @Override
-            public boolean matches(Exchange exchange) {
-                return !upToDate;
-            }
-        };
-    }
-
-    protected void upToDate() {
-        this.upToDate = true;
-    }
-
-    protected void notUpToDate() {
-        this.upToDate = false;
-    }
-
-    protected Processor turnOtherSourceToNotUpToDate() {
-        return new Processor() {
-
-            @Override
-            public void process(Exchange exchange) throws Exception {
-                for (Class clazz : onChangeToUpdateSourceClasses) {
-                    Source source = (Source) factory.getBean(clazz);
-                    source.notUpToDate();
-                }
-            }
-        };
+    public void turnOtherSourceToNotUpToDate() {
+        for (Class clazz : onChangeToUpdateSourceClasses) {
+            Source source = (Source) getFactory().getBean(clazz);
+            source.setUpToDate(false);
+        }
     }
 
     public void onChangeToUpdateSource(Class clazz) {
@@ -60,8 +39,6 @@ public abstract class Source extends RouteBuilder {
     public void onChangeAction(Class clazz) {
         onChangeActionClasses.add(clazz);
     }
-
-    public Set<Class> onChangeActionClasses() {
-        return onChangeActionClasses;
-    }
+    
+    public void buildEndpoint(){}
 }
