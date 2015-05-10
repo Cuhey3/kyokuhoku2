@@ -49,7 +49,6 @@ public abstract class SiteSource extends Source {
                 .to(getEndpoint);
 
         from(changingEndpoint)
-                .toF("log:site.%s.log.changing?showBody=false", sourceKind)
                 .bean(this, "turnOtherSourceToNotUpToDate")
                 .bean(this, "getOnChangeActionClasses")
                 .to(ActionBroker.ENTRY_ENDPOINT);
