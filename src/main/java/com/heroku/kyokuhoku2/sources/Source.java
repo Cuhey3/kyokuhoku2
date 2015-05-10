@@ -20,6 +20,8 @@ public abstract class Source extends RouteBuilder {
     private final Set<Class> onChangeToUpdateSourceClasses = new HashSet<>();
     @Getter
     private final Set<Class> onChangeActionClasses = new HashSet<>();
+    @Setter
+    protected String sourceKind;
 
     public boolean isNotUpToDate() {
         return !isUpToDate();
@@ -39,6 +41,7 @@ public abstract class Source extends RouteBuilder {
     public void onChangeAction(Class clazz) {
         onChangeActionClasses.add(clazz);
     }
-    
-    public void buildEndpoint(){}
+
+    public void buildEndpoint() {
+    }
 }

@@ -8,7 +8,6 @@ import org.apache.camel.Predicate;
 import org.apache.camel.Processor;
 import org.apache.camel.ProducerTemplate;
 import org.apache.camel.impl.DefaultExchange;
-import org.apache.camel.model.dataformat.JsonLibrary;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public abstract class JsonizeSource extends Source {

@@ -20,7 +20,7 @@ public abstract class SiteSource extends Source {
     private String html = "";
     private String[] htmlArray = new String[]{};
     private Integer hash = null;
-    private String sourceKind, sourceUrl, continueQuery, continueKey, continueValue;
+    private String sourceUrl, continueQuery, continueKey, continueValue;
     private String periodExpression = "1m";
     private boolean singlePage = true;
     private String getEndpoint, retryEndpoint, changingEndpoint, timerEndpoint;
