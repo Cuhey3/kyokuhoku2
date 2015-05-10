@@ -1,6 +1,7 @@
 package com.heroku.kyokuhoku2.sources.site;
 
 import com.heroku.kyokuhoku2.HttpUtil;
+import com.heroku.kyokuhoku2.Utility;
 import com.heroku.kyokuhoku2.actions.ActionBroker;
 import com.heroku.kyokuhoku2.sources.Source;
 import java.util.Arrays;
@@ -43,8 +44,8 @@ public abstract class SiteSource extends Source {
                 .to(changingEndpoint);
 
         from(retryEndpoint)
-                .bean(this, "setDelay")
-                .delay(simple("${header.myDelay}"))
+                .bean(Utility.class, "setCustomDelay")
+                .delay(simple("${header.customDelay}"))
                 .filter().method(this, "isNotUpToDate")
                 .to(getEndpoint);
 
@@ -87,13 +88,6 @@ public abstract class SiteSource extends Source {
             documentArray[i] = Jsoup.parse(htmlArray[i]);
         }
         return documentArray;
-    }
-
-    public void setDelay(@Header(value = "myDelay") Long delay) {
-        if (delay == null) {
-            delay = 1000L;
-        }
-        delay *= 2;
     }
 
     public boolean validateUpcomingSiteSource(@Body Object body, final boolean flag) {

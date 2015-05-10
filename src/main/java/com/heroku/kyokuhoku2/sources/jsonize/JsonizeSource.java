@@ -1,10 +1,11 @@
 package com.heroku.kyokuhoku2.sources.jsonize;
 
 import com.heroku.kyokuhoku2.JsonUtil;
+import com.heroku.kyokuhoku2.Utility;
 import com.heroku.kyokuhoku2.sources.Source;
 import java.util.List;
+import lombok.Getter;
 import org.apache.camel.Exchange;
-import org.apache.camel.Predicate;
 import org.apache.camel.Processor;
 import org.apache.camel.ProducerTemplate;
 import org.apache.camel.impl.DefaultExchange;
@@ -18,6 +19,7 @@ public abstract class JsonizeSource extends Source {
     protected Object jsonObject;
     protected String diffString;
     protected List diffList;
+    @Getter
     protected boolean isInitDone = false;
     protected Object upcomingJsonString;
     protected String entryEndpointUri = String.format("seda:jsonize.%s.entry", sourceKind);
@@ -27,10 +29,11 @@ public abstract class JsonizeSource extends Source {
     @Override
     public void configure() throws Exception {
         from(entryEndpointUri)
-                .choice().when(isInitDone())
+                .choice().when().method(this, "isInitDone")
                 .to(updateEndpointUri)
                 .otherwise()
-                .process(setDelay())
+                .bean(Utility.class, "setCustomDelay")
+                .delay(simple("${header.customDelay}"))
                 .to(entryEndpointUri);
 
         from(initEndpointUri)
@@ -58,30 +61,5 @@ public abstract class JsonizeSource extends Source {
             DefaultExchange exchange = new DefaultExchange(this.getContext());
             pt.send(entryEndpointUri, exchange);
         }
-    }
-
-    private Predicate isInitDone() {
-        return new Predicate() {
-
-            @Override
-            public boolean matches(Exchange exchange) {
-                return isInitDone;
-            }
-        };
-    }
-
-    public Processor setDelay() {
-        return new Processor() {
-
-            @Override
-            public void process(Exchange exchange) throws Exception {
-                Long delay = exchange.getIn().getHeader("myDelay", Long.class);
-                if (delay == null) {
-                    delay = 1000L;
-                }
-                delay *= 2;
-                exchange.getIn().setHeader("myDelay", delay);
-            }
-        };
     }
 }
