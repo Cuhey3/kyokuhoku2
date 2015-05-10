@@ -2,8 +2,11 @@ package com.heroku.kyokuhoku2.actions;
 
 import com.heroku.kyokuhoku2.sources.Source;
 import java.util.ArrayList;
+import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.camel.Body;
+import org.apache.camel.Headers;
 import org.apache.camel.builder.RouteBuilder;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +19,14 @@ public abstract class Action extends RouteBuilder {
     private final ArrayList<Class> sourceClasses = new ArrayList<>();
     @Getter
     @Setter
-    private String defaultActionEndpoint;
+    protected String defaultActionEndpoint;
+
+    @Override
+    public void configure() throws Exception {
+        from(defaultActionEndpoint).bean(this, "defaultAction");
+    }
+
+    public abstract void defaultAction(@Body Object body, @Headers Map headers);
 
     public boolean isReadyToAction() {
         for (Class clazz : sourceClasses) {
@@ -31,4 +41,5 @@ public abstract class Action extends RouteBuilder {
     protected void addSourceClass(Class clazz) {
         sourceClasses.add(clazz);
     }
+
 }

@@ -23,8 +23,7 @@ public class ActionBroker extends RouteBuilder {
     BeanFactory factory;
     private final Set<Class> actionQueue = Collections.synchronizedSet(new LinkedHashSet<>(Arrays.asList(new Class[]{CacheSeiyuCategoryMemberAction.class})));
     public static final String ENTRY_ENDPOINT = "seda:action.broker.entry";
-    public String timerEndpoint = "timer:action.broker.poll?period=10s";
-    public String doneEndpoint = "seda:action.broker.done";
+    public String timerEndpoint = "timer:action.broker.poll?period=5s";
 
     @Override
     public void configure() throws Exception {
@@ -34,9 +33,7 @@ public class ActionBroker extends RouteBuilder {
                 .filter().method(this, "hasActionQueue")
                 .routingSlip(simple("${header.actionEndpoint}"))
                 .filter(simple("${header.doneAction}"))
-                .to(doneEndpoint);
-
-        from(doneEndpoint).bean(this, "doneActionQueue");
+                .bean(this, "removeDoneActionQueue");
     }
 
     public boolean hasActionQueue(@Headers Map headers) {
@@ -72,7 +69,7 @@ public class ActionBroker extends RouteBuilder {
         }
     }
 
-    public void doneActionQueue(@Header(value = "actionClass") Class actionClass) {
+    public void removeDoneActionQueue(@Header(value = "actionClass") Class actionClass) {
         actionQueue.remove(actionClass);
     }
 }

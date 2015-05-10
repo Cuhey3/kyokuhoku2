@@ -4,6 +4,7 @@ import com.heroku.kyokuhoku2.sources.site.SeiyuCategoryMemberSiteSource;
 import com.heroku.kyokuhoku2.sources.site.SiteSource;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import org.apache.camel.Body;
 import org.apache.camel.Headers;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -19,12 +20,7 @@ public class CacheSeiyuCategoryMemberAction extends Action {
     }
 
     @Override
-    public void configure() throws Exception {
-        from(getDefaultActionEndpoint())
-                .bean(this, "action");
-    }
-
-    public void action(@Headers Map headers) {
+    public void defaultAction(@Body Object body, @Headers Map headers) {
         SiteSource source = getFactory().getBean(SeiyuCategoryMemberSiteSource.class);
         LinkedHashSet<String> names = new LinkedHashSet<>();
         for (Document doc : source.getDocumentArray()) {
