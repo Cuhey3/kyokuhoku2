@@ -44,13 +44,12 @@ public class Broker extends RouteBuilder {
         while (itr.hasNext()) {
             ComputableSource one = itr.next();
             if (!one.isUpToDate()) {
-                for (Source source : one.getSuperiorSources()) {
-                    if (!source.isUpToDate()) {
-                        one = null;
-                        break;
-                    }
+                boolean superiorSourcesReady = true;
+                Iterator<Source> iterator = one.getSuperiorSources().iterator();
+                while (superiorSourcesReady && iterator.hasNext()) {
+                    superiorSourcesReady = iterator.next().isUpToDate();
                 }
-                if (one != null) {
+                if (superiorSourcesReady) {
                     return one;
                 }
             }
