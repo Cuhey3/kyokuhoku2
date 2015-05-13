@@ -21,7 +21,7 @@ public class SeiyuNameSource extends ComputableSource {
     @Override
     public void configure() throws Exception {
         from(computeEndpoint).bean(this, "wao");
-        //setModifiedTime(-1L);
+        setModifiedTime(-1L);
     }
 
     public void wao() {

@@ -1,28 +1,36 @@
 package com.heroku.kyokuhoku2.sources;
 
-import org.apache.camel.ProducerTemplate;
 import static java.lang.String.*;
-import org.apache.camel.impl.DefaultExchange;
+import java.util.HashSet;
+import java.util.Set;
+import lombok.Getter;
 
 public abstract class ComputableSource extends Source {
 
+    @Getter
     public String computeEndpoint;
-    public ProducerTemplate computeProducerTemplate;
+    @Getter
+    private final Set<Class> superiorSourceClasses = new HashSet<>();
+    @Getter
+    private final Set<Source> superiorSources = new HashSet<>();
 
     @Override
     public void buildEndpoint() {
         computeEndpoint = format("direct:%s.compute", sourceKind);
     }
 
-    public void checkProducerTemplate() {
-        if (computeProducerTemplate == null) {
-            computeProducerTemplate = this.getContext().createProducerTemplate();
-            computeProducerTemplate.setDefaultEndpointUri(computeEndpoint);
+    public void injectSuperiorSources() {
+        for (Class clazz : superiorSourceClasses) {
+            superiorSources.add((Source) factory.getBean(clazz));
         }
     }
 
-    public void compute() {
-        checkProducerTemplate();
-        computeProducerTemplate.send(new DefaultExchange(this.getContext()));
+    @Override
+    public boolean isUpToDate() {
+        long parentModifiedTime = 0L;
+        for (Source source : superiorSources) {
+            parentModifiedTime = Math.max(parentModifiedTime, source.getModifiedTime());
+        }
+        return modifiedTime >= parentModifiedTime;
     }
 }
