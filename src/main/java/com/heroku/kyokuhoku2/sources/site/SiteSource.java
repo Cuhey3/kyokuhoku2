@@ -58,12 +58,14 @@ public abstract class SiteSource extends Source {
         if (getHash() == null || !newHash.equals(getHash())) {
             if (getHash() == null) {
                 setReady(true);
-                System.out.println(this.getClass().getName() + " is upToDate.");
+                System.out.println(sourceKind + " is up-to-date.");
             } else {
                 setModifiedTime(System.currentTimeMillis());
+                System.out.println(sourceKind + " is updated.");
             }
             setHtml(newHtml);
             setHash(newHash);
+
         }
     }
 
