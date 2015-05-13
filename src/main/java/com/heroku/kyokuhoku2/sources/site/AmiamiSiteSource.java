@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 public class AmiamiSiteSource extends SiteSource {
 
     private AmiamiSiteSource() {
-        setSourceKind("amiami");
+        setSourceKind("site.amiami");
         setSourceUrl("http://www.amiami.jp/top/page/cal/goods.html");
         setPeriodExpression("30m");
         buildEndpoint();

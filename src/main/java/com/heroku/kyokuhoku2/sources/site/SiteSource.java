@@ -2,14 +2,11 @@ package com.heroku.kyokuhoku2.sources.site;
 
 import com.heroku.kyokuhoku2.HttpUtil;
 import com.heroku.kyokuhoku2.Utility;
-import com.heroku.kyokuhoku2.actions.ActionBroker;
 import com.heroku.kyokuhoku2.sources.Source;
 import java.util.Arrays;
-import java.util.Objects;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.apache.camel.Body;
-import org.apache.camel.Header;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import static java.lang.String.format;
@@ -18,13 +15,21 @@ import static java.lang.String.format;
 @EqualsAndHashCode(callSuper = false)
 public abstract class SiteSource extends Source {
 
+    private boolean ready = false;
     private String html = "";
     private String[] htmlArray = new String[]{};
     private Integer hash = null;
     private String sourceUrl, continueQuery, continueKey, continueValue;
     private String periodExpression = "1m";
     private boolean singlePage = true;
-    private String getEndpoint, retryEndpoint, changingEndpoint, timerEndpoint;
+    private String getEndpoint, retryEndpoint, timerEndpoint;
+
+    @Override
+    public void buildEndpoint() {
+        getEndpoint = format("seda:%s.get", sourceKind);
+        retryEndpoint = format("seda:%s.retry", sourceKind);
+        timerEndpoint = format("timer:%s.timer?period=%s", sourceKind, periodExpression);
+    }
 
     @Override
     public void configure() throws Exception {
@@ -37,47 +42,66 @@ public abstract class SiteSource extends Source {
                 .otherwise()
                 .bean(HttpUtil.class, format("getPages(%s,%s,%s,%s)", sourceUrl, continueQuery, continueKey, continueValue))
                 .end()
-                .choice().when().method(this, "validateUpcomingSiteSource(${body},false)")
-                .to(retryEndpoint)
+                .choice().when().method(this, "validateUpcomingSiteSource")
+                .bean(this, "update")
                 .otherwise()
-                .filter().method(this, "isSiteChanging")
-                .to(changingEndpoint);
+                .to(retryEndpoint);
 
         from(retryEndpoint)
-                .bean(Utility.class, "setCustomDelay")
+                .bean(Utility.class, "setCustomDelay(*,1000L)")
                 .delay(simple("${header.customDelay}"))
-                .filter().method(this, "isNotUpToDate")
                 .to(getEndpoint);
-
-        from(changingEndpoint)
-                .bean(this, "turnOtherSourceToNotUpToDate")
-                .bean(this, "getOnChangeActionClasses")
-                .to(ActionBroker.ENTRY_ENDPOINT);
     }
 
-    public boolean isSiteChanging(@Body Object body) {
-        boolean siteChanging = false;
-        if (body instanceof String) {
+    public void update(@Body String newHtml) {
+        Integer newHash = newHtml.hashCode();
+        if (getHash() == null || !newHash.equals(getHash())) {
+            if (getHash() == null) {
+                setReady(true);
+                System.out.println(this.getClass().getName() + " is upToDate.");
+            } else {
+                setModifiedTime(System.currentTimeMillis());
+            }
+            setHtml(newHtml);
+            setHash(newHash);
+        }
+    }
+
+    public void update(@Body String[] newHtmlArray) {
+        Integer newHash = Arrays.hashCode(newHtmlArray);
+        if (getHash() == null || !newHash.equals(getHash())) {
+            if (getHash() == null) {
+                setReady(true);
+            } else {
+                setModifiedTime(System.currentTimeMillis());
+            }
+            setHtmlArray(newHtmlArray);
+            setHash(newHash);
+        }
+    }
+
+    public boolean validateUpcomingSiteSource(@Body Object body) {
+        boolean validate = true;
+        if (body == null) {
+            validate = false;
+        } else if (body instanceof String) {
             String newHtml = (String) body;
-            Integer newHash = newHtml.hashCode();
-            if (!Objects.equals(newHash, getHash())) {
-                siteChanging = getHash() != null;
-                setHtml(newHtml);
-                setHash(newHash);
+            if (newHtml.isEmpty()) {
+                validate = false;
             }
         } else if (body instanceof String[]) {
             String[] newHtmlArray = (String[]) body;
-            Integer newHash = Arrays.hashCode(newHtmlArray);
-            if (newHash != 1 && !Objects.equals(newHash, getHash())) {
-                siteChanging = getHash() != null;
-                setHtmlArray(newHtmlArray);
-                setHash(newHash);
+            for (String newHtml : newHtmlArray) {
+                if (newHtml == null || newHtml.isEmpty()) {
+                    validate = false;
+                    break;
+                }
             }
         }
-        return siteChanging;
+        return validate;
     }
 
-    public Document getDocument() {
+    public Document getDocument(String html) {
         return Jsoup.parse(this.html);
     }
 
@@ -90,37 +114,8 @@ public abstract class SiteSource extends Source {
         return documentArray;
     }
 
-    public boolean validateUpcomingSiteSource(@Body Object body, final boolean flag) {
-        boolean validate = true;
-        if (body == null) {
-            validate = false;
-        } else if (body instanceof String) {
-            String newHtml = (String) body;
-            if (newHtml.isEmpty()) {
-                validate = false;
-            }
-        } else if (body instanceof String[]) {
-            String[] newHtmlArray = (String[]) body;
-            for (String newHtml : newHtmlArray) {
-                if (newHtml == null) {
-                    validate = false;
-                    break;
-                }
-            }
-        }
-        if (validate) {
-            setUpToDate(true);
-        } else {
-            setUpToDate(false);
-        }
-        return validate == flag;
-    }
-
     @Override
-    public void buildEndpoint() {
-        getEndpoint = format("seda:site.%s.get", sourceKind);
-        retryEndpoint = format("seda:site.%s.retry", sourceKind);
-        changingEndpoint = format("seda:site.%s.changing", sourceKind);
-        timerEndpoint = format("timer:site.%s.timer?period=%s", sourceKind, periodExpression);
+    public boolean isUpToDate() {
+        return ready;
     }
 }

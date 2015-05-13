@@ -27,18 +27,8 @@ public class HttpUtil {
         };
     }
 
-    public static Processor getJsonProcessor(final Expression urlExp) {
-        return new Processor() {
-
-            @Override
-            public void process(Exchange exchange) throws Exception {
-                exchange.getIn().setBody(HttpUtil.getJson(urlExp.evaluate(exchange, String.class)));
-            }
-        };
-    }
-
     public String getHtml(final String url) {
-        Document document = HttpUtil.getDocument(url);
+        Document document = HttpUtil.get(url);
         if (document == null) {
             return null;
         } else {
@@ -63,29 +53,8 @@ public class HttpUtil {
         }
     }
 
-    public static Processor getBytesProcessor(final Expression urlExp, final Expression fileNameExp) {
-        return new Processor() {
-
-            @Override
-            public void process(Exchange exchange) throws Exception {
-                exchange.getIn().setHeader(Exchange.FILE_NAME, fileNameExp.evaluate(exchange, String.class));
-                exchange.getIn().setBody(HttpUtil.getBytes(urlExp.evaluate(exchange, String.class)));
-            }
-        };
-    }
-
-    public static Processor getDocumentProcessor(final Expression urlExp) {
-        return new Processor() {
-
-            @Override
-            public void process(Exchange exchange) throws Exception {
-                exchange.getIn().setBody(HttpUtil.getDocument(urlExp.evaluate(exchange, String.class)));
-            }
-        };
-    }
-
     public static String[] getPages(final String url, final String query, final String param, final String attr) {
-        Document doc = HttpUtil.getDocument(url);
+        Document doc = HttpUtil.get(url);
         ArrayList<String> pages = new ArrayList<>();
         while (true && doc != null) {
             pages.add(doc.outerHtml());
@@ -94,13 +63,13 @@ public class HttpUtil {
                 break;
             } else {
                 String cmcontinue = select.get(0).attr(attr);
-                doc = HttpUtil.getDocument(url + param + cmcontinue);
+                doc = HttpUtil.get(url + param + cmcontinue);
             }
         }
         return pages.toArray(new String[pages.size()]);
     }
 
-    public static Document getDocument(String url) {
+    public static Document get(String url) {
         Document doc = null;
         int retry = 0;
         while (doc == null && retry < 10) {

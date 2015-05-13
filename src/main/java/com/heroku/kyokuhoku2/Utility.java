@@ -1,13 +1,13 @@
 package com.heroku.kyokuhoku2;
 
-import org.apache.camel.Header;
+import java.util.Map;
+import org.apache.camel.Headers;
 
 public class Utility {
 
-    public void setCustomDelay(@Header(value = "customDelay") Long delay) {
-        if (delay == null) {
-            delay = 1000L;
-        }
-        delay *= 2;
+    public void setCustomDelay(@Headers Map headers, Long defaultDelay) {
+        Long delay = (Long) headers.get("customDelay");
+        delay = delay == null ? defaultDelay : delay * 2;
+        headers.put("customDelay", delay);
     }
 }

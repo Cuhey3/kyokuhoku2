@@ -1,26 +1,30 @@
-package com.heroku.kyokuhoku2.actions;
+package com.heroku.kyokuhoku2.sources.jsonize;
 
+import com.heroku.kyokuhoku2.sources.ComputableSource;
 import com.heroku.kyokuhoku2.sources.site.SeiyuCategoryMemberSiteSource;
 import com.heroku.kyokuhoku2.sources.site.SiteSource;
 import java.util.LinkedHashSet;
-import java.util.Map;
-import org.apache.camel.Body;
-import org.apache.camel.Headers;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.stereotype.Component;
 
 @Component
-public class CacheSeiyuCategoryMemberAction extends Action {
+public class SeiyuNameSource extends ComputableSource {
 
-    private CacheSeiyuCategoryMemberAction() {
-        setDefaultActionEndpoint("direct:cache.seiyu.categorymember");
-        addSourceClass(SeiyuCategoryMemberSiteSource.class);
+    private SeiyuNameSource() {
+        setSourceKind("jsonize.seiyu.name");
+        getSuperiorSourceClasses().add(SeiyuCategoryMemberSiteSource.class);
+        buildEndpoint();
     }
 
     @Override
-    public void defaultAction(@Body Object body, @Headers Map headers) {
+    public void configure() throws Exception {
+        from(computeEndpoint).bean(this, "wao");
+        //setModifiedTime(-1L);
+    }
+
+    public void wao() {
         SiteSource source = getFactory().getBean(SeiyuCategoryMemberSiteSource.class);
         LinkedHashSet<String> names = new LinkedHashSet<>();
         for (Document doc : source.getDocumentArray()) {
@@ -32,6 +36,6 @@ public class CacheSeiyuCategoryMemberAction extends Action {
         for (String s : names) {
             System.out.println(s);
         }
-        headers.put("doneAction", true);
+        setModifiedTime(System.currentTimeMillis());
     }
 }

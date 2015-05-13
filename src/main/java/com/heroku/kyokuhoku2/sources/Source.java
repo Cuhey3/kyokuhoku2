@@ -14,34 +14,29 @@ public abstract class Source extends RouteBuilder {
     @Getter
     BeanFactory factory;
     @Getter
-    @Setter
-    private boolean upToDate = false;
+    private final Set<Class> superiorSourceClasses = new HashSet<>();
     @Getter
-    private final Set<Class> onChangeToUpdateSourceClasses = new HashSet<>();
-    @Getter
-    private final Set<Class> onChangeActionClasses = new HashSet<>();
+    private final Set<Source> superiorSources = new HashSet<>();
     @Setter
     protected String sourceKind;
+    @Getter
+    @Setter
+    protected long modifiedTime = 0L;
 
-    public boolean isNotUpToDate() {
-        return !isUpToDate();
+    public void buildEndpoint() {
     }
 
-    public void turnOtherSourceToNotUpToDate() {
-        for (Class clazz : onChangeToUpdateSourceClasses) {
-            Source source = (Source) getFactory().getBean(clazz);
-            source.setUpToDate(false);
+    public void injectSuperiorSources() {
+        for (Class clazz : superiorSourceClasses) {
+            superiorSources.add((Source) factory.getBean(clazz));
         }
     }
 
-    public void onChangeToUpdateSource(Class clazz) {
-        onChangeToUpdateSourceClasses.add(clazz);
-    }
-
-    public void onChangeAction(Class clazz) {
-        onChangeActionClasses.add(clazz);
-    }
-
-    public void buildEndpoint() {
+    public boolean isUpToDate() {
+        long parentModifiedTime = 0L;
+        for (Source source : superiorSources) {
+            parentModifiedTime = Math.max(parentModifiedTime, source.getModifiedTime());
+        }
+        return modifiedTime >= parentModifiedTime;
     }
 }
