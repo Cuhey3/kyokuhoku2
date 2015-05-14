@@ -2,16 +2,14 @@ package com.heroku.kyokuhoku2.sources.jsonize;
 
 import com.heroku.kyokuhoku2.JsonUtil;
 import com.heroku.kyokuhoku2.Utility;
-import com.heroku.kyokuhoku2.sources.Source;
+import com.heroku.kyokuhoku2.sources.ComputableSource;
 import java.util.List;
 import lombok.Getter;
-import org.apache.camel.Exchange;
-import org.apache.camel.Processor;
 import org.apache.camel.ProducerTemplate;
 import org.apache.camel.impl.DefaultExchange;
 import org.springframework.beans.factory.annotation.Autowired;
 
-public abstract class JsonizeSource extends Source {
+public abstract class JsonizeSource extends ComputableSource {
 
     @Autowired
     JsonUtil jsonUtil;
@@ -20,35 +18,19 @@ public abstract class JsonizeSource extends Source {
     protected String diffString;
     protected List diffList;
     @Getter
-    protected boolean isInitDone = false;
+    protected boolean isInitDone = true;
     protected Object upcomingJsonString;
-    protected String entryEndpointUri = String.format("seda:jsonize.%s.entry", sourceKind);
-    protected String updateEndpointUri = String.format("seda:jsonize.%s.update", sourceKind);
-    protected String initEndpointUri = String.format("seda:jsonize.%s.init", sourceKind);
+    protected String updateEndpoint;
 
     @Override
     public void configure() throws Exception {
-        from(entryEndpointUri)
+        from(entryEndpoint)
                 .choice().when().method(this, "isInitDone")
-                .to(updateEndpointUri)
+                .to(updateEndpoint)
                 .otherwise()
-                .bean(Utility.class, "setCustomDelay")
+                .bean(Utility.class, "setCustomDelay(*,1000L)")
                 .delay(simple("${header.customDelay}"))
-                .to(entryEndpointUri);
-
-        from(initEndpointUri)
-                .to("direct:utility.mapBodyToHeader")
-                .process(new Processor() {
-
-                    @Override
-                    public void process(Exchange exchange) throws Exception {
-                        String str = exchange.getIn().getHeader("json", String.class);
-                        if (str.isEmpty()) {
-                            str = "{}";
-                        }
-                    }
-                });
-
+                .to(entryEndpoint);
     }
 
     public void entry(Object object) {
@@ -59,7 +41,19 @@ public abstract class JsonizeSource extends Source {
             upcomingJsonString = str;
             ProducerTemplate pt = this.getContext().createProducerTemplate();
             DefaultExchange exchange = new DefaultExchange(this.getContext());
-            pt.send(entryEndpointUri, exchange);
+            pt.send(entryEndpoint, exchange);
         }
+    }
+
+    @Override
+    public void buildEndpoint() {
+        super.buildEndpoint();
+        entryEndpoint = String.format("direct:%s.entry", sourceKind);
+        updateEndpoint = String.format("direct:%s.update", sourceKind);
+    }
+
+    @Override
+    public boolean isReady() {
+        return true;
     }
 }

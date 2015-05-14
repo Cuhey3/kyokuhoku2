@@ -10,21 +10,17 @@ import org.jsoup.select.Elements;
 import org.springframework.stereotype.Component;
 
 @Component
-public class SeiyuNameSource extends ComputableSource {
+public class SeiyuNameJsonizeSource extends ComputableSource {
 
-    private SeiyuNameSource() {
+    private SeiyuNameJsonizeSource() {
         setSourceKind("jsonize.seiyu.name");
         getSuperiorSourceClasses().add(SeiyuCategoryMemberSiteSource.class);
+        setCheckForUpdateTime(-1L);
         buildEndpoint();
     }
 
     @Override
-    public void configure() throws Exception {
-        from(computeEndpoint).bean(this, "wao");
-        setModifiedTime(-1L);
-    }
-
-    public void wao() {
+    public Object compute() {
         SiteSource source = getFactory().getBean(SeiyuCategoryMemberSiteSource.class);
         LinkedHashSet<String> names = new LinkedHashSet<>();
         for (Document doc : source.getDocumentArray()) {
@@ -36,6 +32,8 @@ public class SeiyuNameSource extends ComputableSource {
         for (String s : names) {
             System.out.println(s);
         }
-        setModifiedTime(System.currentTimeMillis());
+        setUpdateTime(System.currentTimeMillis());
+        setCheckForUpdateTime(System.currentTimeMillis());
+        return null;
     }
 }

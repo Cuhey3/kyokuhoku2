@@ -15,25 +15,30 @@ import static java.lang.String.format;
 @EqualsAndHashCode(callSuper = false)
 public abstract class SiteSource extends Source {
 
-    private boolean ready = false;
     private String html = "";
     private String[] htmlArray = new String[]{};
     private Integer hash = null;
     private String sourceUrl, continueQuery, continueKey, continueValue;
     private String periodExpression = "1m";
     private boolean singlePage = true;
-    private String getEndpoint, retryEndpoint, timerEndpoint;
+    private String getEndpoint, validateEndpoint, timerEndpoint, compareEndpoint;
 
     @Override
     public void buildEndpoint() {
-        getEndpoint = format("seda:%s.get", sourceKind);
-        retryEndpoint = format("seda:%s.retry", sourceKind);
-        timerEndpoint = format("timer:%s.timer?period=%s", sourceKind, periodExpression);
+        super.buildEndpoint();
+        timerEndpoint = format("timer:%s.poll?period=%s", sourceKind, periodExpression);
+        getEndpoint = format("direct:%s.get", sourceKind);
+        validateEndpoint = format("direct:%s.retry", sourceKind);
+        compareEndpoint = format("direct:%s.compare", sourceKind);
     }
 
     @Override
     public void configure() throws Exception {
+        from(initEndpoint)
+                .bean(this, "ready()");
+
         from(timerEndpoint)
+                .filter().method(this, "isReady()")
                 .to(getEndpoint);
 
         from(getEndpoint)
@@ -42,49 +47,43 @@ public abstract class SiteSource extends Source {
                 .otherwise()
                 .bean(HttpUtil.class, format("getPages(%s,%s,%s,%s)", sourceUrl, continueQuery, continueKey, continueValue))
                 .end()
-                .choice().when().method(this, "validateUpcomingSiteSource")
-                .bean(this, "update")
-                .otherwise()
-                .to(retryEndpoint);
+                .to(validateEndpoint);
 
-        from(retryEndpoint)
+        from(validateEndpoint)
+                .choice().when().method(this, "validate")
+                .to(compareEndpoint)
+                .otherwise()
                 .bean(Utility.class, "setCustomDelay(*,1000L)")
                 .delay(simple("${header.customDelay}"))
                 .to(getEndpoint);
+
+        from(compareEndpoint)
+                .filter().method(this, "compare")
+                .bean(this, "updated")
+                .end()
+                .bean(this, "checkedForUpdate");
+
     }
 
-    public void update(@Body String newHtml) {
-        Integer newHash = newHtml.hashCode();
-        if (getHash() == null || !newHash.equals(getHash())) {
-            if (getHash() == null) {
-                setReady(true);
-                System.out.println(sourceKind + " is up-to-date.");
-            } else {
-                setModifiedTime(System.currentTimeMillis());
-                System.out.println(sourceKind + " is updated.");
-            }
+    public boolean compare(@Body Object body) {
+        Integer newHash;
+        Integer oldHash = getHash();
+        if (body instanceof String) {
+            String newHtml = ((String) body);
+            newHash = newHtml.hashCode();
             setHtml(newHtml);
-            setHash(newHash);
-
-        }
-    }
-
-    public void update(@Body String[] newHtmlArray) {
-        Integer newHash = Arrays.hashCode(newHtmlArray);
-        if (getHash() == null || !newHash.equals(getHash())) {
-            if (getHash() == null) {
-                setReady(true);
-                System.out.println(sourceKind + " is up-to-date.");
-            } else {
-                setModifiedTime(System.currentTimeMillis());
-                System.out.println(sourceKind + " is updated.");
-            }
+        } else if (body instanceof String[]) {
+            String[] newHtmlArray = ((String[]) body);
+            newHash = Arrays.hashCode(newHtmlArray);
             setHtmlArray(newHtmlArray);
-            setHash(newHash);
+        } else {
+            return false;
         }
+        setHash(newHash);
+        return !(oldHash == null || newHash.equals(oldHash));
     }
 
-    public boolean validateUpcomingSiteSource(@Body Object body) {
+    public boolean validate(@Body Object body) {
         boolean validate = true;
         if (body == null) {
             validate = false;

@@ -4,11 +4,14 @@ import static java.lang.String.*;
 import java.util.HashSet;
 import java.util.Set;
 import lombok.Getter;
+import lombok.Setter;
 
 public abstract class ComputableSource extends Source {
 
     @Getter
     public String computeEndpoint;
+    @Setter
+    public String entryEndpoint;
     @Getter
     private final Set<Class> superiorSourceClasses = new HashSet<>();
     @Getter
@@ -16,7 +19,17 @@ public abstract class ComputableSource extends Source {
 
     @Override
     public void buildEndpoint() {
+        super.buildEndpoint();
         computeEndpoint = format("direct:%s.compute", sourceKind);
+    }
+
+    @Override
+    public void configure() throws Exception {
+        from(initEndpoint)
+                .bean(this, "ready()");
+
+        from(computeEndpoint)
+                .bean(this, "compute");
     }
 
     public void injectSuperiorSources() {
@@ -27,10 +40,12 @@ public abstract class ComputableSource extends Source {
 
     @Override
     public boolean isUpToDate() {
-        long parentModifiedTime = 0L;
+        long parentUpdateTime = 0L;
         for (Source source : superiorSources) {
-            parentModifiedTime = Math.max(parentModifiedTime, source.getModifiedTime());
+            parentUpdateTime = Math.max(parentUpdateTime, source.getUpdateTime());
         }
-        return modifiedTime >= parentModifiedTime;
+        return checkForUpdateTime >= parentUpdateTime;
     }
+
+    public abstract Object compute();
 }
