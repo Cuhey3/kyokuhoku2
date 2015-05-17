@@ -28,13 +28,14 @@ public abstract class SiteSource extends Source {
         super.buildEndpoint();
         timerEndpoint = format("timer:%s.poll?period=%s", sourceKind, periodExpression);
         getEndpoint = format("direct:%s.get", sourceKind);
-        validateEndpoint = format("direct:%s.retry", sourceKind);
+        validateEndpoint = format("direct:%s.validate", sourceKind);
         compareEndpoint = format("direct:%s.compare", sourceKind);
     }
 
     @Override
     public void configure() throws Exception {
         from(initEndpoint)
+                .to(getEndpoint)
                 .bean(this, "ready()");
 
         from(timerEndpoint)
@@ -62,7 +63,6 @@ public abstract class SiteSource extends Source {
                 .bean(this, "updated")
                 .end()
                 .bean(this, "checkedForUpdate");
-
     }
 
     public boolean compare(@Body Object body) {

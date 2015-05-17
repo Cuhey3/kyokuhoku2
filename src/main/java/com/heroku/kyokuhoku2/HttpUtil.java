@@ -74,12 +74,13 @@ public class HttpUtil {
         int retry = 0;
         while (doc == null && retry < 10) {
             try {
-                System.out.println(url);
+                System.out.println("--> " + url);
                 doc = Jsoup.connect(url).maxBodySize(Integer.MAX_VALUE).timeout(Integer.MAX_VALUE).get();
             } catch (Throwable t) {
                 retry++;
             }
         }
+        System.out.println("<-- " + url);
         return doc;
     }
 

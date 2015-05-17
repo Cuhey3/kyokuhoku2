@@ -22,10 +22,10 @@ public class Broker extends RouteBuilder {
     @Override
     public void configure() throws Exception {
         from(initEndpoint)
-                .bean(this, "setComputableSources");
+                .bean(this, "setComputableSources()");
 
         from(timerEndpoint)
-                .bean(this, "getOneShoudUpdateSource")
+                .bean(this, "getOneShoudUpdateSource()")
                 .filter().simple("${body} != null")
                 .routingSlip().simple("body.computeEndpoint");
     }
@@ -33,9 +33,7 @@ public class Broker extends RouteBuilder {
     public void setComputableSources() {
         String[] beanNames = factory.getBeanNamesForType(ComputableSource.class);
         for (String beanName : beanNames) {
-            ComputableSource bean = (ComputableSource) factory.getBean(beanName);
-            bean.injectSuperiorSources();
-            computableSources.add(bean);
+            computableSources.add((ComputableSource) factory.getBean(beanName));
         }
     }
 
