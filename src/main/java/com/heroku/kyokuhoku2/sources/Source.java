@@ -36,7 +36,7 @@ public abstract class Source extends RouteBuilder {
     }
 
     public void ready() {
-        //System.out.println(this.getClass().getName() + "initialized.");
+        System.out.println(this.getClass().getName() + " is ready.");
         ready = true;
     }
 }

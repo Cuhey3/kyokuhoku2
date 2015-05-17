@@ -1,6 +1,5 @@
 package com.heroku.kyokuhoku2.sources.jsonize;
 
-import com.heroku.kyokuhoku2.sources.ComputableSource;
 import com.heroku.kyokuhoku2.sources.site.SeiyuCategoryMemberSiteSource;
 import com.heroku.kyokuhoku2.sources.site.SiteSource;
 import java.util.LinkedHashSet;
@@ -10,7 +9,7 @@ import org.jsoup.select.Elements;
 import org.springframework.stereotype.Component;
 
 @Component
-public class SeiyuNameJsonizeSource extends ComputableSource {
+public class SeiyuNameJsonizeSource extends JsonizeSource {
 
     private SeiyuNameJsonizeSource() {
         setSourceKind("jsonize.seiyu.name");

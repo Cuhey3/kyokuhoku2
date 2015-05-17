@@ -11,7 +11,7 @@ public abstract class ComputableSource extends Source {
     @Getter
     public String computeEndpoint;
     @Setter
-    public String entryEndpoint;
+    public String jsonEntryEndpoint;
     @Getter
     private final Set<Class> superiorSourceClasses = new HashSet<>();
     @Getter
