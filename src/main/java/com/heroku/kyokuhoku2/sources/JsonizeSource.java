@@ -21,6 +21,13 @@ public abstract class JsonizeSource extends ComputableSource {
     public String entryJsonEndpoint;
 
     @Override
+    public void buildEndpoint() {
+        super.buildEndpoint();
+        entryJsonEndpoint = format("direct:%s.entryJson", sourceKind);
+        jsonDiffEndpoint = format("direct:%s.jsonDiff", sourceKind);
+    }
+
+    @Override
     public void configure() throws Exception {
         super.configure();
 
@@ -29,17 +36,18 @@ public abstract class JsonizeSource extends ComputableSource {
 
         from(entryJsonEndpoint)
                 .filter().simple("${body} != null")
-                .bean(this, "jsonConvert")
+                .bean(this, "convertToJson")
                 .filter().simple("${body} != null")
                 .filter().method(this, "jsonCompare")
                 .to(jsonDiffEndpoint)
+                .end()
                 .bean(this, "checkedForUpdate");
 
         from(jsonDiffEndpoint)
                 .bean(this, "jsonDiff");
     }
 
-    public String jsonConvert(@Body Object body) {
+    public String convertToJson(@Body Object body) {
         String str = jsonUtil.getJsonString(body);
         if (str.isEmpty()) {
             System.out.println(String.format("無効なエントリーです。kind:%s object:%s", sourceKind, body));
@@ -57,20 +65,12 @@ public abstract class JsonizeSource extends ComputableSource {
         String diff = jsonUtil.getJsonDiff(body, jsonString);
         if (!diff.equals("[]")) {
             System.out.println(diff);
-            pushDiff(diff);
+            pushJsonDiff(diff);
             updated();
         }
     }
 
-    @Override
-
-    public void buildEndpoint() {
-        super.buildEndpoint();
-        entryJsonEndpoint = format("direct:%s.entryJson", sourceKind);
-        jsonDiffEndpoint = format("direct:%s.jsonDiff", sourceKind);
-    }
-
-    public void pushDiff(String diffString) throws IOException {
+    public void pushJsonDiff(String diffString) throws IOException {
         jsonDiffList.add(jsonUtil.unmarshal(diffString, List.class));
         while (jsonDiffList.size() > jsonDiffSize) {
             jsonDiffList.remove(0);
