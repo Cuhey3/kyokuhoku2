@@ -26,7 +26,6 @@ public class SeiyuNameJsonizeSource extends JsonizeSource {
 
         from(computeImplEndpoint)
                 .bean(this, "compute()")
-                .filter().simple("${body} != null")
                 .to(entryJsonEndpoint);
     }
 
