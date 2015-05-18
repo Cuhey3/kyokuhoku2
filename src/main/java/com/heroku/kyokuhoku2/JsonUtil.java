@@ -2,6 +2,7 @@ package com.heroku.kyokuhoku2;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.fge.jsonpatch.diff.JsonDiff;
 import java.io.IOException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -23,5 +24,9 @@ public class JsonUtil {
         } catch (JsonProcessingException t) {
             return "";
         }
+    }
+
+    public String getJsonDiff(String newJson, String oldJson) throws IOException {
+        return JsonDiff.asJson(mapper.readTree(oldJson), mapper.readTree(newJson)).toString();
     }
 }

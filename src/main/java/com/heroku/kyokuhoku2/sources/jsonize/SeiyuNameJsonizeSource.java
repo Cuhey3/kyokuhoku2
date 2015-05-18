@@ -1,7 +1,9 @@
 package com.heroku.kyokuhoku2.sources.jsonize;
 
+import com.heroku.kyokuhoku2.sources.JsonizeSource;
 import com.heroku.kyokuhoku2.sources.site.SeiyuCategoryMemberSiteSource;
 import com.heroku.kyokuhoku2.sources.site.SiteSource;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -19,20 +21,25 @@ public class SeiyuNameJsonizeSource extends JsonizeSource {
     }
 
     @Override
+    public void configure() throws Exception {
+        super.configure();
+
+        from(computeImplEndpoint)
+                .bean(this, "compute()")
+                .filter().simple("${body} != null")
+                .to(entryJsonEndpoint);
+    }
+
+    @Override
     public Object compute() {
         SiteSource source = getFactory().getBean(SeiyuCategoryMemberSiteSource.class);
-        LinkedHashSet<String> names = new LinkedHashSet<>();
+        LinkedHashMap<String, String> names = new LinkedHashMap<>();
         for (Document doc : source.getDocumentArray()) {
             Elements els = doc.select("categorymembers cm[title]");
             for (Element e : els) {
-                names.add(e.attr("title"));
+                names.put(e.attr("title"), e.attr("title"));
             }
         }
-        for (String s : names) {
-            System.out.println(s);
-        }
-        setUpdateTime(System.currentTimeMillis());
-        setCheckForUpdateTime(System.currentTimeMillis());
-        return null;
+        return names;
     }
 }

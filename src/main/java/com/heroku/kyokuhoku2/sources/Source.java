@@ -19,15 +19,17 @@ public abstract class Source extends RouteBuilder {
     protected long updateTime = 0L, checkForUpdateTime = 0L;
     @Getter
     protected boolean ready = false;
-    protected String initEndpoint;
+    protected String initEndpoint, initImplEndpoint;
 
     public void buildEndpoint() {
         initEndpoint = format("timer:%s.init?repeatCount=1", sourceKind);
+        initImplEndpoint = format("direct:%s.initImpl", sourceKind);
     }
 
     public abstract boolean isUpToDate();
 
     public void updated() {
+        System.out.println(this.getClass().getName() + " is updated.");
         updateTime = System.currentTimeMillis();
     }
 

@@ -35,8 +35,11 @@ public abstract class SiteSource extends Source {
     @Override
     public void configure() throws Exception {
         from(initEndpoint)
-                .to(getEndpoint)
+                .to(initImplEndpoint)
                 .bean(this, "ready()");
+
+        from(initImplEndpoint)
+                .to(getEndpoint);
 
         from(timerEndpoint)
                 .filter().method(this, "isReady()")
