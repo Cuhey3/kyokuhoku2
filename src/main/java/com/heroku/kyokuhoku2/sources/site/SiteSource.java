@@ -107,7 +107,7 @@ public abstract class SiteSource extends Source {
         return validate;
     }
 
-    public Document getDocument(String html) {
+    public Document getDocument() {
         return Jsoup.parse(this.html);
     }
 

@@ -8,15 +8,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.io.IOException;
 import static java.lang.String.format;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import lombok.Getter;
 
 public abstract class JsonizeSource extends ComputableSource {
 
     @Autowired
     JsonUtil jsonUtil;
     protected String jsonString;
-    protected List jsonDiffList;
+    @Getter
+    protected List diffList;
     @Setter
-    protected int jsonDiffSize = 20;
+    protected int diffSize = 20;
     public String jsonDiffEndpoint;
     public String entryJsonEndpoint;
 
@@ -71,14 +75,17 @@ public abstract class JsonizeSource extends ComputableSource {
     }
 
     public void pushJsonDiff(String diffString) throws IOException {
-        jsonDiffList.add(jsonUtil.unmarshal(diffString, List.class));
-        while (jsonDiffList.size() > jsonDiffSize) {
-            jsonDiffList.remove(0);
+        Map map = new LinkedHashMap<>();
+        map.put("time", System.currentTimeMillis());
+        map.put("diff", jsonUtil.unmarshal(diffString, List.class));
+        diffList.add(map);
+        while (diffList.size() > diffSize) {
+            diffList.remove(0);
         }
     }
 
     public void initImpl() {
         jsonString = "{}";
-        jsonDiffList = new ArrayList<>();
+        diffList = new ArrayList<>();
     }
 }
