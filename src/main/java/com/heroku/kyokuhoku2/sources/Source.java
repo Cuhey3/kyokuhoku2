@@ -29,7 +29,7 @@ public abstract class Source extends RouteBuilder {
     public abstract boolean isUpToDate();
 
     public void updated() {
-        System.out.println(this.getClass().getName() + " is updated.");
+        System.out.println("[UPDATE] " + this.getClass().getSimpleName());
         updateTime = System.currentTimeMillis();
     }
 
@@ -38,7 +38,7 @@ public abstract class Source extends RouteBuilder {
     }
 
     public void ready() {
-        System.out.println(this.getClass().getName() + " is ready.");
+        System.out.println("[READY] " + this.getClass().getSimpleName());
         ready = true;
     }
 }

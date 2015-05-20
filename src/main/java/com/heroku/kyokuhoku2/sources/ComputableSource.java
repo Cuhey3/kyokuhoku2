@@ -37,7 +37,6 @@ public abstract class ComputableSource extends Source {
         for (Class clazz : superiorSourceClasses) {
             superiorSources.add((Source) factory.getBean(clazz));
         }
-        System.out.println(this.getClass().getName() + " injected.");
     }
 
     @Override

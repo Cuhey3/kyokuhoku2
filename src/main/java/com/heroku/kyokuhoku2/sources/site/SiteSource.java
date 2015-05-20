@@ -57,7 +57,7 @@ public abstract class SiteSource extends Source {
                 .choice().when().method(this, "validate")
                 .to(compareEndpoint)
                 .otherwise()
-                .bean(Utility.class, "setCustomDelay(*,1000L)")
+                .bean(Utility.class, "setCustomDelay(*,1000)")
                 .delay(simple("${header.customDelay}"))
                 .to(getEndpoint);
 

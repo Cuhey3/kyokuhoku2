@@ -39,7 +39,6 @@ public abstract class JsonizeSource extends ComputableSource {
                 .bean(this, "initImpl()");
 
         from(entryJsonEndpoint)
-                .filter().simple("${body} != null")
                 .bean(this, "convertToJson")
                 .filter().simple("${body} != null")
                 .filter().method(this, "jsonCompare")
